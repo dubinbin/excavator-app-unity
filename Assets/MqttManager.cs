@@ -28,7 +28,7 @@ public class MqttManager : MonoBehaviour
 
     [Header("Topics")]
     [Tooltip("启动时自动订阅的主题列表")]
-    public string[] subscribeTopics = { "excavator/status", "excavator/sensor" };
+    public string[] subscribeTopics = { "excavator/sensor", "01/map/elevation", "01/sensor/rtk_lio" };
 
     [Tooltip("发布数据的默认主题")]
     public string publishTopic = "excavator/control";
@@ -42,6 +42,7 @@ public class MqttManager : MonoBehaviour
     // 连接成功/断开时触发
     public event Action OnConnected;
     public event Action OnDisconnected;
+    public event Action<RtkGpsMsg> OnRtkUpdated;
 
     private MqttClient client;
     private readonly Queue<(string topic, string msg)> messageQueue = new();
@@ -61,6 +62,7 @@ public class MqttManager : MonoBehaviour
             {
                 var (topic, msg) = messageQueue.Dequeue();
                 OnMessageReceived?.Invoke(topic, msg);
+                DispatchByTopic(topic, msg);
             }
         }
     }
@@ -157,13 +159,28 @@ public class MqttManager : MonoBehaviour
     {
         string topic = e.Topic;
         string msg = Encoding.UTF8.GetString(e.Message);
+        lock (queueLock)
+        {
+            messageQueue.Enqueue((topic, msg));
+        }
+    }
+
+    private void DispatchByTopic(string topic, string msg)
+    {
         switch (topic)
         {
-            case "excavator/status":
-                HandleStatus(msg);
+            case "01/map/elevation":
+                Debug.Log($"[MQTT] 高度图: {msg}");
+                HandleElevation(msg);
                 break;
             case "excavator/sensor":
                 HandleSensor(msg);
+                break;
+            case "01/status":
+                HandleStatus(msg);
+                break;
+            case "01/sensor/rtk_lio":
+                HandleRtkLio(msg);
                 break;
         }
     }
@@ -182,5 +199,45 @@ public class MqttManager : MonoBehaviour
     {
         Debug.LogWarning("[MQTT] 连接已关闭");
         OnDisconnected?.Invoke();
+    }
+
+    private void HandleRtkLio(string msg)
+    {
+        try
+        {
+            var rtk = JsonUtility.FromJson<RtkGpsMsg>(msg);
+            if (rtk == null || rtk.rtk_status == null || rtk.position == null)
+            {
+                Debug.LogWarning("[MQTT] RTK GPS 数据解析失败或为空");
+                return;
+            }
+            OnRtkUpdated?.Invoke(rtk);
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[MQTT] RTK GPS 解析异常: {e.Message}");
+        }
+    }
+
+    private void HandleElevation(string msg)
+    {
+        try
+        {
+            var elevation = JsonUtility.FromJson<ElevationMsg>(msg);
+            if (elevation?.metadata == null || elevation.data == null)
+            {
+                Debug.LogWarning("[MQTT] 高程图 JSON 解析失败或数据为空");
+                return;
+            }
+            var handler = FindFirstObjectByType<HandleElevationMap>();
+            if (handler != null)
+                handler.OnElevationDataReceived(elevation);
+            else
+                Debug.LogWarning("[MQTT] 场景中未找到 HandleElevationMap，无法更新地形");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[MQTT] 高程图解析异常: {e.Message}");
+        }
     }
 }

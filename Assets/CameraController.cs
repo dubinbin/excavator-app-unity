@@ -18,6 +18,8 @@ public class CameraController : MonoBehaviour
 
     void LateUpdate()
     {
+        if (target == null) return;
+
         // 鼠标旋转（PC测试）
         if (Input.GetMouseButton(0))
         {

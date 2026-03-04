@@ -206,6 +206,15 @@ TemplateContainer {
     background-color: var(--color-accent-hover);
 }
 
+/* ---------- 地图视图 ---------- */
+.map-view {
+    margin-top: 10px;
+    height: 300px;
+    border-width: 1px;
+    border-color: var(--color-border);
+    background-color: #0f1217;
+}
+
 /* ---------- 右侧 — 信息卡片 ---------- */
 .info-card {
     background-color: var(--color-bg-card);
