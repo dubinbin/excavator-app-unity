@@ -74,9 +74,13 @@ public class OSMMapController : MonoBehaviour
     {
         if (rtk.position != null && rtk.position.global != null)
         {
+            double lat = rtk.position.global.latitude;
+            double lon = rtk.position.global.longitude;
             var rot = new Quaternion(rtk.rotation.x, rtk.rotation.y, rtk.rotation.z, rtk.rotation.w);
             var vel = new Vector2(rtk.velocity.x, rtk.velocity.y);
-            mapElement.SetRobotPose(rtk.position.global.latitude, rtk.position.global.longitude, rot, vel);
+            mapElement.Offset = Vector2.zero;
+            mapElement.SetCenter(lat, lon);
+            mapElement.SetRobotPose(lat, lon, rot, vel);
         }
     }
 

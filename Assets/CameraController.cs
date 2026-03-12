@@ -19,8 +19,8 @@ public class CameraController : MonoBehaviour
     void LateUpdate()
     {
         if (target == null) return;
+        if (OSMMapElement.IsPointerOverMap) return;
 
-        // 鼠标旋转（PC测试）
         if (Input.GetMouseButton(0))
         {
             x += Input.GetAxis("Mouse X") * rotationSpeed * 100;

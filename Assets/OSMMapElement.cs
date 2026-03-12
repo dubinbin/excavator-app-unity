@@ -12,6 +12,7 @@ public class OSMMapElement : VisualElement
     public Vector2 Offset;
     public Vector2? RobotLatLon;
     public float PixelsPerMeter = 1f;
+    public static bool IsPointerOverMap;
     VisualElement robot;
     RobotArrowElement arrow;
     Quaternion robotRotation;
@@ -38,6 +39,8 @@ public class OSMMapElement : VisualElement
         RegisterCallback<PointerDownEvent>(OnPointerDown);
         RegisterCallback<PointerMoveEvent>(OnPointerMove);
         RegisterCallback<PointerUpEvent>(OnPointerUp);
+        RegisterCallback<PointerEnterEvent>(e => IsPointerOverMap = true);
+        RegisterCallback<PointerLeaveEvent>(e => IsPointerOverMap = false);
         RegisterCallback<GeometryChangedEvent>(OnGeometryChanged);
         robot = new VisualElement();
         robot.style.position = Position.Absolute;
@@ -52,8 +55,8 @@ public class OSMMapElement : VisualElement
         Add(robot);
         arrow = new RobotArrowElement();
         arrow.style.position = Position.Absolute;
-        arrow.style.width = 40;
-        arrow.style.height = 40;
+        arrow.style.width = 60;
+        arrow.style.height = 60;
         arrow.style.display = DisplayStyle.None;
         Add(arrow);
         layerBuildings = CreateLayer(OSMLayerType.Buildings);
@@ -79,6 +82,7 @@ public class OSMMapElement : VisualElement
         CenterLat = lat;
         CenterLon = lon;
         MarkDirtyRepaint();
+        SyncLayers();
     }
 
     public void SetRobot(double lat, double lon)
@@ -105,6 +109,7 @@ public class OSMMapElement : VisualElement
         ClampOffset();
         MarkDirtyRepaint();
         SyncLayers();
+        e.StopPropagation();
     }
 
     void OnPointerDown(PointerDownEvent e)
@@ -124,11 +129,13 @@ public class OSMMapElement : VisualElement
         ClampOffset();
         MarkDirtyRepaint();
         SyncLayers();
+        e.StopPropagation();
     }
 
     void OnPointerUp(PointerUpEvent e)
     {
         dragging = false;
+        e.StopPropagation();
     }
 
     Vector2 Project(double lat, double lon)
@@ -315,20 +322,18 @@ public class OSMMapElement : VisualElement
         {
             var ll = RobotLatLon.Value;
             var p = Project(ll.x, ll.y);
-            robot.style.translate = new Translate(p.x - 8, p.y - 8, 0);
-            robot.style.display = DisplayStyle.Flex;
             if (hasPose)
             {
-                float ang = GetHeadingAngleRad(robotRotation);
-                float speed = robotVelocity.magnitude;
-                float len = Mathf.Clamp(24f + speed * 10f, 24f, 64f);
-                arrow.angleRad = ang;
-                arrow.length = len;
-                arrow.style.translate = new Translate(p.x - 20f, p.y - 20f, 0);
+                robot.style.display = DisplayStyle.None;
+                arrow.angleRad = GetHeadingAngleRad(robotRotation);
+                arrow.style.translate = new Translate(p.x - 30f, p.y - 30f, 0);
                 arrow.style.display = DisplayStyle.Flex;
+                arrow.MarkDirtyRepaint();
             }
             else
             {
+                robot.style.translate = new Translate(p.x - 8, p.y - 8, 0);
+                robot.style.display = DisplayStyle.Flex;
                 arrow.style.display = DisplayStyle.None;
             }
         }
@@ -349,36 +354,65 @@ public class OSMMapElement : VisualElement
     class RobotArrowElement : VisualElement
     {
         public float angleRad = 0f;
-        public float length = 36f;
-        public Color color = Color.red;
+        static readonly Color GlowOuter = new Color(0.26f, 0.52f, 0.96f, 0.12f);
+        static readonly Color GlowInner = new Color(0.26f, 0.52f, 0.96f, 0.25f);
+        static readonly Color ArrowFill = new Color(0.26f, 0.52f, 0.96f, 1f);
+        static readonly Color ArrowBorder = new Color(1f, 1f, 1f, 0.85f);
+
         public RobotArrowElement()
         {
             pickingMode = PickingMode.Ignore;
             generateVisualContent += OnGenerate;
         }
+
         void OnGenerate(MeshGenerationContext ctx)
         {
             var p = ctx.painter2D;
-            p.strokeColor = color;
-            p.lineWidth = 2f;
-            Vector2 center = new Vector2(this.contentRect.width * 0.5f, this.contentRect.height * 0.5f);
-            Vector2 dir = new Vector2(Mathf.Sin(angleRad), Mathf.Cos(angleRad));
-            Vector2 tip = center + dir * (length * 0.5f);
+            float cx = contentRect.width * 0.5f;
+            float cy = contentRect.height * 0.5f;
+
+            p.fillColor = GlowOuter;
             p.BeginPath();
-            p.MoveTo(center);
-            p.LineTo(tip);
-            p.Stroke();
-            Vector2 left = Rotate(dir, -150f * Mathf.Deg2Rad) * (length * 0.2f);
-            Vector2 right = Rotate(dir, 150f * Mathf.Deg2Rad) * (length * 0.2f);
+            p.Arc(new Vector2(cx, cy), 26f, 0f, 360f);
+            p.Fill();
+
+            p.fillColor = GlowInner;
+            p.BeginPath();
+            p.Arc(new Vector2(cx, cy), 16f, 0f, 360f);
+            p.Fill();
+
+            Vector2 dir = new Vector2(Mathf.Sin(angleRad), -Mathf.Cos(angleRad));
+            Vector2 perp = new Vector2(dir.y, -dir.x);
+            Vector2 center = new Vector2(cx, cy);
+
+            Vector2 tip = center + dir * 18f;
+            Vector2 wingL = center - dir * 10f + perp * 11f;
+            Vector2 wingR = center - dir * 10f - perp * 11f;
+            Vector2 notch = center - dir * 5f;
+
+            p.fillColor = ArrowFill;
             p.BeginPath();
             p.MoveTo(tip);
-            p.LineTo(tip + left);
-            p.Stroke();
+            p.LineTo(wingL);
+            p.LineTo(notch);
+            p.LineTo(wingR);
+            p.ClosePath();
+            p.Fill();
+
+            p.strokeColor = ArrowBorder;
+            p.lineWidth = 1.5f;
             p.BeginPath();
             p.MoveTo(tip);
-            p.LineTo(tip + right);
+            p.LineTo(wingL);
+            p.LineTo(notch);
+            p.LineTo(wingR);
+            p.ClosePath();
             p.Stroke();
+
+            p.fillColor = Color.white;
+            p.BeginPath();
+            p.Arc(center, 3f, 0f, 360f);
+            p.Fill();
         }
-        Vector2 Rotate(Vector2 v, float a) => new Vector2(v.x * Mathf.Cos(a) - v.y * Mathf.Sin(a), v.x * Mathf.Sin(a) + v.y * Mathf.Cos(a));
     }
 }

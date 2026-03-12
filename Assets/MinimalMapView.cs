@@ -12,6 +12,7 @@ public class MinimalMapView : MonoBehaviour
     VisualElement mapElem;
     RtkGpsMsg latest;
     readonly List<Vector2> trail = new List<Vector2>();
+    Vector2 viewCenter;
 
     void Start()
     {
@@ -39,6 +40,7 @@ public class MinimalMapView : MonoBehaviour
             var p = new Vector2(t.x, t.y);
             trail.Add(p);
             if (trail.Count > trailMax) trail.RemoveAt(0);
+            viewCenter = p;
         }
         Render();
     }
@@ -57,8 +59,7 @@ public class MinimalMapView : MonoBehaviour
             Clear(new Color(0.07f, 0.08f, 0.1f, 1f));
         DrawGrid(10f, new Color(0.14f, 0.16f, 0.2f, 1f));
         DrawTrail(new Color(0.2f, 0.8f, 1f, 0.95f), 3);
-        DrawAccuracyCircle(new Color(1f, 0.84f, 0f, 0.35f));
-        DrawArrow(new Color(0.2f, 1f, 0.4f, 1f), 36, 3);
+        DrawNavigationIndicator();
         tex.Apply();
         mapElem.style.backgroundImage = new StyleBackground(tex);
     }
@@ -67,8 +68,9 @@ public class MinimalMapView : MonoBehaviour
 
     Vector2 ToScreen(Vector2 meters)
     {
-        float sx = (MeterToPixel(meters.x) / windowMeters * 0.5f + 0.5f) * (mapSize - 1);
-        float sy = (1f - (MeterToPixel(meters.y) / windowMeters * 0.5f + 0.5f)) * (mapSize - 1);
+        Vector2 local = meters - viewCenter;
+        float sx = (MeterToPixel(local.x) / windowMeters * 0.5f + 0.5f) * (mapSize - 1);
+        float sy = (1f - (MeterToPixel(local.y) / windowMeters * 0.5f + 0.5f)) * (mapSize - 1);
         return new Vector2(sx, sy);
     }
 
@@ -144,13 +146,96 @@ public class MinimalMapView : MonoBehaviour
         }
     }
 
-    void DrawAccuracyCircle(Color color)
+    void DrawNavigationIndicator()
     {
-        if (latest == null || latest.rtk_status == null || latest.rtk_status.accuracy == null) return;
-        float r = MeterToPixel(latest.rtk_status.accuracy.horizontal);
         int cx = mapSize / 2;
         int cy = mapSize / 2;
-        int rr = Mathf.Max(2, Mathf.RoundToInt(r));
+
+        FillCircleBlend(cx, cy, 22, new Color(0.26f, 0.52f, 0.96f, 0.12f));
+        FillCircleBlend(cx, cy, 15, new Color(0.26f, 0.52f, 0.96f, 0.22f));
+
+        if (latest != null && latest.rotation != null)
+        {
+            var q = new Quaternion(latest.rotation.x, latest.rotation.y, latest.rotation.z, latest.rotation.w);
+            Vector3 d = q * Vector3.up;
+            float angleRad = Mathf.Atan2(d.x, d.y);
+
+            Vector2 dir = new Vector2(Mathf.Sin(angleRad), Mathf.Cos(angleRad));
+            Vector2 perp = new Vector2(-dir.y, dir.x);
+            Vector2 center = new Vector2(cx, cy);
+
+            Vector2 tip = center + dir * 20f;
+            Vector2 wingL = center - dir * 12f + perp * 12f;
+            Vector2 wingR = center - dir * 12f - perp * 12f;
+            Vector2 notch = center - dir * 6f;
+
+            Color fill = new Color(0.26f, 0.52f, 0.96f, 1f);
+            FillTriangle(tip, wingL, notch, fill);
+            FillTriangle(tip, notch, wingR, fill);
+
+            Color border = new Color(1f, 1f, 1f, 0.85f);
+            DrawLineThick((int)tip.x, (int)tip.y, (int)wingL.x, (int)wingL.y, 2, border);
+            DrawLineThick((int)wingL.x, (int)wingL.y, (int)notch.x, (int)notch.y, 2, border);
+            DrawLineThick((int)notch.x, (int)notch.y, (int)wingR.x, (int)wingR.y, 2, border);
+            DrawLineThick((int)wingR.x, (int)wingR.y, (int)tip.x, (int)tip.y, 2, border);
+        }
+
+        DrawThickPoint(cx, cy, 3, Color.white);
+
+        if (latest != null && latest.rtk_status != null && latest.rtk_status.accuracy != null)
+        {
+            float r = MeterToPixel(latest.rtk_status.accuracy.horizontal);
+            int rr = Mathf.Max(2, Mathf.RoundToInt(r));
+            DrawCircleOutline(cx, cy, rr, new Color(1f, 0.84f, 0f, 0.4f));
+        }
+    }
+
+    void FillCircleBlend(int cx, int cy, int radius, Color src)
+    {
+        for (int dy = -radius; dy <= radius; dy++)
+            for (int dx = -radius; dx <= radius; dx++)
+                if (dx * dx + dy * dy <= radius * radius)
+                    BlendPixel(cx + dx, cy + dy, src);
+    }
+
+    void BlendPixel(int x, int y, Color src)
+    {
+        if (x < 0 || x >= mapSize || y < 0 || y >= mapSize) return;
+        Color dst = tex.GetPixel(x, y);
+        float a = src.a;
+        tex.SetPixel(x, y, new Color(
+            dst.r * (1 - a) + src.r * a,
+            dst.g * (1 - a) + src.g * a,
+            dst.b * (1 - a) + src.b * a, 1f));
+    }
+
+    void FillTriangle(Vector2 a, Vector2 b, Vector2 c, Color color)
+    {
+        int minX = Mathf.Max(0, Mathf.FloorToInt(Mathf.Min(a.x, Mathf.Min(b.x, c.x))));
+        int maxX = Mathf.Min(mapSize - 1, Mathf.CeilToInt(Mathf.Max(a.x, Mathf.Max(b.x, c.x))));
+        int minY = Mathf.Max(0, Mathf.FloorToInt(Mathf.Min(a.y, Mathf.Min(b.y, c.y))));
+        int maxY = Mathf.Min(mapSize - 1, Mathf.CeilToInt(Mathf.Max(a.y, Mathf.Max(b.y, c.y))));
+        for (int y = minY; y <= maxY; y++)
+            for (int x = minX; x <= maxX; x++)
+                if (PointInTriangle(new Vector2(x, y), a, b, c))
+                    tex.SetPixel(x, y, color);
+    }
+
+    bool PointInTriangle(Vector2 p, Vector2 a, Vector2 b, Vector2 c)
+    {
+        float d1 = Cross2D(p, a, b);
+        float d2 = Cross2D(p, b, c);
+        float d3 = Cross2D(p, c, a);
+        return !((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0));
+    }
+
+    float Cross2D(Vector2 p1, Vector2 p2, Vector2 p3)
+    {
+        return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
+    }
+
+    void DrawCircleOutline(int cx, int cy, int rr, Color color)
+    {
         int x = rr, y = 0, err = 0;
         while (x >= y)
         {
@@ -166,23 +251,4 @@ public class MinimalMapView : MonoBehaviour
             if (err > 0) { x -= 1; err -= 2 * x + 1; }
         }
     }
-
-    void DrawArrow(Color color, float length, int width)
-    {
-        if (latest == null || latest.rotation == null) return;
-        var q = new Quaternion(latest.rotation.x, latest.rotation.y, latest.rotation.z, latest.rotation.w);
-        Vector3 north = new Vector3(0, 1, 0);
-        Vector3 d = q * north;
-        float angleRad = Mathf.Atan2(d.x, d.y);
-        Vector2 dir = new Vector2(Mathf.Sin(angleRad), Mathf.Cos(angleRad));
-        Vector2 center = new Vector2(mapSize / 2f, mapSize / 2f);
-        Vector2 tip = center + dir * length;
-        DrawLineThick((int)center.x, (int)center.y, (int)tip.x, (int)tip.y, width, color);
-        Vector2 left = Rotate(dir, -140f * Mathf.Deg2Rad) * (length * 0.3f);
-        Vector2 right = Rotate(dir, 140f * Mathf.Deg2Rad) * (length * 0.3f);
-        DrawLineThick((int)tip.x, (int)tip.y, (int)(tip.x + left.x), (int)(tip.y + left.y), width, color);
-        DrawLineThick((int)tip.x, (int)tip.y, (int)(tip.x + right.x), (int)(tip.y + right.y), width, color);
-    }
-
-    Vector2 Rotate(Vector2 v, float a) => new Vector2(v.x * Mathf.Cos(a) - v.y * Mathf.Sin(a), v.x * Mathf.Sin(a) + v.y * Mathf.Cos(a));
 }
