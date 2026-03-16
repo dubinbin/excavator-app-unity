@@ -23,7 +23,7 @@ public class WebRtcReceiver : MonoBehaviour
 {
     [Header("MediaMTX WHEP")]
     [Tooltip("WHEP 端点地址，例如 http://192.168.1.100:8889/cam1/whep")]
-    public string whepUrl = "http://127.0.0.1:8889/stream/whep";
+    public string whepUrl = "http://127.0.0.1:8889/left2Url/whep";
 
     [Header("ICE 服务器（内网可留空）")]
     public string[] iceServers = { };

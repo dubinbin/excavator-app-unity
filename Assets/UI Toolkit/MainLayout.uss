@@ -132,6 +132,19 @@ TemplateContainer {
     overflow: scroll;
 }
 
+.center-video-area {
+    position: absolute;
+    left: 50%;
+    bottom: 15px;
+    translate: -50% 0;
+    width: 90%;
+    max-width: 920px;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+}
+
+
 /* ---------- 中间 3D 视口 ---------- */
 .center-viewport {
     flex-grow: 1;
@@ -278,6 +291,15 @@ TemplateContainer {
     overflow: hidden;
     justify-content: center;
     align-items: center;
+}
+
+.video-center-view {
+    width: 31.5%;
+    height: 150px;
+    min-height: 150px;
+    flex-grow: 0;
+    margin-top: 0;
+    background-color: rgba(10, 12, 16, 0.82);
 }
 
 .video-placeholder {

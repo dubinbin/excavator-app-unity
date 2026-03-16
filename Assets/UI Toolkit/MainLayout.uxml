@@ -6,14 +6,30 @@
                 <ui:Label text="控制面板" class="panel-title" />
                 <ui:VisualElement name="overpass-map" class="map-view" />
                 <!-- WebRTC 直播视频 -->
-                <ui:VisualElement name="video-feed" class="video-view">
-                    <ui:Label name="lbl-video-status" text="等待视频流..." class="video-placeholder" />
+                <ui:VisualElement name="video-feed-left" class="video-view">
+                    <ui:Label name="lbl-video-status-left" text="等待视频流..." class="video-placeholder" />
+                </ui:VisualElement>
+
+                 <ui:VisualElement name="video-feed-left2" class="video-view">
+                    <ui:Label name="lbl-video-status-left2" text="等待视频流..." class="video-placeholder" />
                 </ui:VisualElement>
                 
             </ui:VisualElement>
             
             <ui:VisualElement name="center-viewport" class="center-viewport">
-  
+                <ui:VisualElement name="center-video-area" class="center-video-area">
+                    <ui:VisualElement name="video-center-1" class="video-view video-center-view">
+                        <ui:Label name="lbl-video-center-1" text="等待左侧视频流..." class="video-placeholder" />
+                    </ui:VisualElement>
+
+                    <!-- WebRTC 直播视频 -->
+                    <ui:VisualElement name="video-center-2"  class="video-view video-center-view">
+                        <ui:Label name="lbl-video-center-2" text="等待视频流..." class="video-placeholder" />
+                    </ui:VisualElement>
+                    <ui:VisualElement name="video-center-3" class="video-view video-center-view">
+                        <ui:Label name="lbl-video-center-3" text="等待右侧视频流..." class="video-placeholder" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
             </ui:VisualElement>
 
             <ui:VisualElement name="right-panel" class="panel right-panel">
@@ -43,6 +59,16 @@
                         <!-- 条目由 UILogic 动态填充 -->
                     </ui:ScrollView>
                 </ui:VisualElement>
+                                <!-- WebRTC 直播视频 -->
+                <ui:VisualElement name="video-feed-right" class="video-view">
+                    <ui:Label name="lbl-video-status-right" text="等待视频流..." class="video-placeholder" />
+                </ui:VisualElement>
+
+                                                <!-- WebRTC 直播视频 -->
+                <ui:VisualElement name="video-feed-right2" class="video-view">
+                    <ui:Label name="lbl-video-status-right2" text="等待视频流..." class="video-placeholder" />
+                </ui:VisualElement>
+
 
             </ui:VisualElement>
         </ui:VisualElement>
