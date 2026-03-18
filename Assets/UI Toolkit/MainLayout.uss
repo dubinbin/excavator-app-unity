@@ -103,6 +103,20 @@ TemplateContainer {
     overflow: hidden;
 }
 
+.panel--dock {
+    margin: 10px 14px 10px 14px;
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.10);
+    border-radius: 10px;
+    background-color: rgba(22, 24, 29, 0.62);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
+}
+
+.panel--dock .panel-title {
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(255, 255, 255, 0.12);
+}
+
 .panel-title {
     font-size: 16px;
     color: var(--color-accent);
@@ -360,19 +374,28 @@ TemplateContainer {
     height: 80px;
     flex-shrink: 0;
     flex-direction: row;
-    align-items: stretch;
-    background-color: rgba(22, 24, 29, 0.65);
-    border-top-width: 1px;
-    border-top-color: rgba(58, 63, 74, 0.5);
+    align-items: center;
+
+    /* Dock-like floating bar */
+    margin: 10px 14px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    padding-left: 14px;
+    padding-right: 14px;
+
+    background-color: rgba(22, 24, 29, 0.78);
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.10);
+    border-radius: 6px;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
 }
 
 /* ---------- 状态格（仪表格子） ---------- */
 .status-cell {
     flex-direction: column;
     justify-content: center;
-    padding: 0 18px;
-    border-right-width: 1px;
-    border-right-color: var(--color-border);
+    padding: 0 14px;
+    border-right-width: 0;
     min-width: 90px;
 }
 
@@ -387,6 +410,15 @@ TemplateContainer {
     border-right-width: 0;
     margin-left: auto;
     -unity-text-align: middle-right;
+}
+
+/* 竖线分隔符（浅白色） */
+.bottom-sep {
+    color: rgba(255, 255, 255, 0.22);
+    font-size: 18px;
+    margin-left: 4px;
+    margin-right: 4px;
+    -unity-text-align: middle-center;
 }
 
 /* 格内横排辅助行 */
